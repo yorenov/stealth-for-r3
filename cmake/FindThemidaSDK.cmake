@@ -1,0 +1,17 @@
+message("Looking for ThemidaSDK...")
+
+set(THEMIDASDK_DIR "${CMAKE_SOURCE_DIR}/3rdparty/ThemidaSDK")
+set(THEMIDASDK_INCLUDE_DIRS "${THEMIDASDK_DIR}/Include/C/")
+set(THEMIDASDK_LIBRARY_PATH "${THEMIDASDK_DIR}/Lib/COFF/")
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    find_library(THEMIDASDK_LIB SecureEngineSDK64.lib ${THEMIDASDK_LIBRARY_PATH} NO_DEFAULT_PATH)
+else()
+    find_library(THEMIDASDK_LIB SecureEngineSDK32.lib ${THEMIDASDK_LIBRARY_PATH} NO_DEFAULT_PATH)
+endif()
+
+set(THEMIDASDK_LIBRARIES ${THEMIDASDK_LIB})
+
+add_library(ThemidaSDK INTERFACE)
+target_include_directories(ThemidaSDK INTERFACE ${THEMIDASDK_INCLUDE_DIRS})
+target_link_libraries(ThemidaSDK INTERFACE ${THEMIDASDK_LIB})

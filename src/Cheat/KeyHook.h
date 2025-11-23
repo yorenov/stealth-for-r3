@@ -1,0 +1,67 @@
+#pragma once
+#include <CPad.h>
+
+#include "sampapi/sampapi.h"
+#include <detours.h>
+
+#include "Memory.h"
+#include "Secure.h"
+
+class CKeyHook {
+public:
+	CKeyHook() {
+		memset(bKeyTable, false, sizeof(bKeyTable));
+		oWndProc = reinterpret_cast<tWndProc>(sampapi::GetAddress(0x60EE0));
+		oCPad_UpdateGameKey = reinterpret_cast<tCPad_UpdateGameKey>(0x541C40);
+		DetourRestoreAfterWith();
+		DetourTransactionBegin();
+		DetourUpdateThread(GetCurrentThread());
+		pSecure->SDetourAttach(&reinterpret_cast<PVOID &>(oWndProc), hkWndProc);
+		DetourTransactionCommit();
+		pSecure->HookInstallCall(0x541E17, reinterpret_cast<DWORD>(hkCPad_UpdateGameKey));
+	}
+
+	~CKeyHook() {
+		memset(bKeyTable, false, sizeof(bKeyTable));
+		DetourRestoreAfterWith();
+		DetourTransactionBegin();
+		DetourUpdateThread(GetCurrentThread());
+		DetourDetach(&reinterpret_cast<PVOID &>(oWndProc), hkWndProc);
+		DetourTransactionCommit();
+		Memory::memcpy_safe(reinterpret_cast<void *>(0x541E17), "\xE8\x24\xFE\xFF\xFF", 5);
+	}
+
+	bool bKeyTable[256];
+
+	struct stGameKeyState {
+		int iState{0};
+		bool bActive{false};
+	} g_GameKeyState[32];
+
+private:
+	typedef LRESULT
+	(__stdcall*tWndProc)(HWND,
+	                     UINT,
+	                     WPARAM,
+	                     LPARAM);
+	typedef BYTE
+	(__thiscall*tCPad_UpdateGameKey)(CPad*,
+	                                 int);
+
+	static LRESULT
+	__stdcall hkWndProc(HWND hWnd,
+	                    UINT msg,
+	                    WPARAM wParam,
+	                    LPARAM lParam);
+	static BYTE
+	__stdcall hkCPad_UpdateGameKey(int iKey);
+
+	tWndProc oWndProc;
+	tCPad_UpdateGameKey oCPad_UpdateGameKey;
+};
+
+extern CKeyHook* pKeyHook;
+
+bool isKeyDown(uint8_t key);
+bool isKeyPressed(uint8_t key);
+bool isKeyReleased(uint8_t vkey);
